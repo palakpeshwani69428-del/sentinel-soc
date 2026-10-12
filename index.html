@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SENTINEL SOC — Defensive Security Operations Console</title>
+<style>
+:root{
+  --bg:#04070b;
+  --bg-2:#070c13;
+  --panel:rgba(11,18,27,.78);
+  --panel-solid:#0b121b;
+  --line:rgba(45,212,191,.14);
+  --line-2:rgba(148,163,184,.10);
+  --txt:#c7d5e0;
+  --mut:#61798f;
+  --dim:#3d5063;
+  --acc:#2dd4bf;
+  --acc-dim:rgba(45,212,191,.14);
+  --crit:#ff3b57;
+  --high:#ff9f2e;
+  --med:#fbbf24;
+  --low:#38bdf8;
+  --ok:#34d399;
+  --mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(1100px 620px at 12% -8%, rgba(45,212,191,.055), transparent 60%),
+    radial-gradient(900px 560px at 92% 6%, rgba(255,59,87,.045), transparent 60%),
+    linear-gradient(180deg,#04070b 0%,#05090f 55%,#03060a 100%);
+  background-attachment:fixed;
+  color:var(--txt);
+  font-family:var(--mono);
+  font-size:12.5px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  min-height:100%;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(45,212,191,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(45,212,191,.035) 1px,transparent 1px);
+  background-size:46px 46px;
+  mask-image:radial-gradient(ellipse 120% 80% at 50% 0%,#000 25%,transparent 78%);
+  -webkit-mask-image:radial-gradient(ellipse 120% 80% at 50% 0%,#000 25%,transparent 78%);
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.014) 0 1px,transparent 1px 3px);
+  mix-blend-mode:overlay;opacity:.5;
+}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:rgba(255,255,255,.02)}
+::-webkit-scrollbar-thumb{background:rgba(45,212,191,.22);border-radius:0}
+::-webkit-scrollbar-thumb:hover{background:rgba(45,212,191,.4)}
+
+/* ============ TOP BAR ============ */
+.topbar{
+  position:sticky;top:0;z-index:60;
+  display:flex;align-items:center;gap:18px;
+  padding:10px 18px;
+  background:linear-gradient(180deg,rgba(6,11,17,.96),rgba(6,11,17,.82));
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+  box-shadow:0 1px 0 rgba(45,212,191,.05), 0 12px 40px rgba(0,0,0,.6);
+}
+.brand{display:flex;align-items:center;gap:11px;flex-shrink:0}
+.brand-mark{
+  width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;
+  color:var(--acc);font-size:19px;
+  border:1px solid rgba(45,212,191,.4);border-radius:8px;
+  background:radial-gradient(circle at 50% 50%,rgba(45,212,191,.16),transparent 70%);
+  box-shadow:0 0 18px rgba(45,212,191,.22), inset 0 0 14px rgba(45,212,191,.1);
+  animation:markPulse 3.4s ease-in-out infinite;
+}
+@keyframes markPulse{0%,100%{box-shadow:0 0 14px rgba(45,212,191,.18),inset 0 0 12px rgba(45,212,191,.08)}50%{box-shadow:0 0 26px rgba(45,212,191,.4),inset 0 0 18px rgba(45,212,191,.18)}}
+.brand-name{font-family:var(--sans);font-weight:800;font-size:15px;letter-spacing:.14em;color:#e8f3f2}
+.brand-name span{color:var(--acc)}
+.brand-sub{font-size:9.5px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+.tabs{display:flex;gap:2px;margin-left:8px}
+.tab{
+  background:transparent;border:1px solid transparent;color:var(--mut);
+  font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  padding:6px 13px;cursor:pointer;border-radius:5px;transition:.18s;
+}
+.tab:hover{color:var(--txt);background:rgba(45,212,191,.06)}
+.tab.active{color:var(--acc);border-color:rgba(45,212,191,.32);background:rgba(45,212,191,.09);box-shadow:0 0 14px rgba(45,212,191,.12)}
+.topbar-status{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.status-chip{
+  display:flex;align-items:center;gap:6px;
+  border:1px solid var(--line-2);border-radius:5px;
+  padding:4px 9px;font-size:10.5px;letter-spacing:.06em;color:var(--mut);
+  background:rgba(255,255,255,.02);white-space:nowrap;
+}
+.status-chip .k{color:var(--dim);font-size:9.5px}
+.status-chip .v{color:var(--txt);font-weight:600}
+.status-chip.live{color:var(--ok);border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.07)}
+.status-chip.live i{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.status-chip.clock{color:var(--acc);font-weight:700;letter-spacing:.12em;border-color:rgba(45,212,191,.28)}
+
+/* ============ GUARDRAILS ============ */
+.guardrails{
+  position:relative;z-index:20;
+  display:flex;flex-wrap:wrap;gap:0;
+  border-bottom:1px solid rgba(251,191,36,.18);
+  background:linear-gradient(90deg,rgba(251,191,36,.075),rgba(251,191,36,.02) 55%,rgba(251,191,36,.06));
+}
+.g-item{
+  display:flex;align-items:center;gap:9px;flex:1 1 320px;
+  padding:7px 18px;font-size:10.6px;color:#c9b98a;letter-spacing:.02em;
+  border-right:1px solid rgba(251,191,36,.12);
+}
+.g-item:last-child{border-right:none}
+.g-ico{
+  flex-shrink:0;width:17px;height:17px;display:grid;place-items:center;
+  border:1px solid rgba(251,191,36,.45);border-radius:4px;color:var(--med);font-size:10px;
+}
+.g-item b{color:var(--med);letter-spacing:.09em;font-size:10.2px}
+
+/* ============ GRID ============ */
+.wrap{position:relative;z-index:10;padding:14px 18px 40px;max-width:1900px;margin:0 auto}
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;align-items:start}
+.span3{grid-column:span 3}.span4{grid-column:span 4}.span5{grid-column:span 5}
+.span6{grid-column:span 6}.span7{grid-column:span 7}.span8{grid-column:span 8}
+.span12{grid-column:span 12}
+
+/* ============ KPI TILES ============ */
+.kpi{
+  position:relative;overflow:hidden;
+  border:1px solid var(--line);border-radius:9px;
+  background:linear-gradient(160deg,rgba(13,21,30,.9),rgba(8,13,20,.72));
+  padding:13px 15px 12px;
+  transition:.22s;
+}
+.kpi::before{content:"";position:absolute;left:0;top:0;width:2px;height:100%;background:var(--acc);opacity:.5;transition:.22s}
+.kpi:hover{border-color:rgba(45,212,191,.32);transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 20px rgba(45,212,191,.06)}
+.kpi:hover::before{opacity:1;box-shadow:0 0 14px var(--acc)}
+.kpi.crit::before{background:var(--crit)}
+.kpi.high::before{background:var(--high)}
+.kpi.low::before{background:var(--low)}
+.kpi.ok::before{background:var(--ok)}
+.kpi-label{font-size:9.6px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.kpi-val{font-family:var(--sans);font-size:27px;font-weight:800;letter-spacing:-.02em;color:#eaf4f3;line-height:1;display:flex;align-items:baseline;gap:5px}
+.kpi-val .unit{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--mut);letter-spacing:.05em}
+.kpi-val.crit{color:var(--crit);text-shadow:0 0 22px rgba(255,59,87,.45)}
+.kpi-sub{margin-top:7px;font-size:10px;color:var(--mut);display:flex;align-items:center;gap:7px;min-height:15px;flex-wrap:wrap}
+.delta{font-weight:700;font-size:10px;padding:1px 5px;border-radius:3px}
+.delta.up{color:var(--crit);background:rgba(255,59,87,.12)}
+.delta.down{color:var(--ok);background:rgba(52,211,153,.12)}
+.delta.flat{color:var(--mut);background:rgba(148,163,184,.1)}
+.spark{display:block;width:100%;height:26px;margin-top:6px;opacity:.85}
+.bar-track{height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;margin-top:8px}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--acc),#7ff5e6);box-shadow:0 0 8px var(--acc);transition:width .6s}
+
+/* ============ PANELS ============ */
+.panel{
+  border:1px solid var(--line);border-radius:9px;
+  background:var(--panel);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  overflow:hidden;display:flex;flex-direction:column;
+  transition:border-color .25s, box-shadow .25s;
+}
+.panel:hover{border-color:rgba(45,212,191,.24)}
+.panel.flash{border-color:rgba(45,212,191,.55);box-shadow:0 0 26px rgba(45,212,191,.16)}
+.panel-head{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 13px;border-bottom:1px solid var(--line-2);
+  background:linear-gradient(180deg,rgba(45,212,191,.045),transparent);
+  flex-shrink:0;
+}
+.panel-head h2{font-family:var(--sans);font-size:11.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#cfe3e0;white-space:nowrap}
+.panel-head .idx{color:var(--acc);font-size:9.5px;opacity:.65;letter-spacing:.05em}
+.panel-meta{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:9.8px;color:var(--mut);letter-spacing:.06em;white-space:nowrap}
+.dot-live{width:5px;height:5px;border-radius:50%;background:var(--acc);box-shadow:0 0 7px var(--acc);animation:blink 1.5s infinite}
+.panel-body{padding:12px 13px;flex:1;min-height:0}
+.scroll{overflow-y:auto;max-height:var(--h,340px)}
+
+/* ============ GLOBE ============ */
+.globe-wrap{position:relative;height:268px;border-radius:7px;overflow:hidden;background:radial-gradient(circle at 50% 50%,rgba(45,212,191,.07),transparent 72%)}
+#globeMap{display:block;width:100%;height:100%}
+.globe-badge{position:absolute;top:8px;left:9px;font-size:9.4px;color:var(--acc);letter-spacing:.12em;border:1px solid rgba(45,212,191,.3);border-radius:4px;padding:2px 7px;background:rgba(4,8,12,.72)}
+.globe-badge.red{color:var(--crit);border-color:rgba(255,59,87,.35);left:auto;right:9px}
+.origins{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.origin-row{display:grid;grid-template-columns:1fr auto auto auto;gap:9px;align-items:center;font-size:10.4px;padding:4px 7px;border-radius:5px;border:1px solid transparent;transition:.18s;animation:slideIn .4s ease}
+.origin-row:hover{background:rgba(45,212,191,.05);border-color:var(--line)}
+.origin-row .cc{display:flex;align-items:center;gap:7px;color:var(--txt)}
+.origin-row .cc b{font-weight:700;letter-spacing:.07em}
+.origin-row .cc em{font-style:normal;color:var(--dim);font-size:9.6px}
+.origin-row .ct{color:var(--high);font-weight:700}
+.origin-row .bl{font-size:9.2px;padding:1px 6px;border-radius:3px;letter-spacing:.06em}
+.bl.blocked{color:var(--ok);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.25)}
+.bl.pass{color:var(--crit);background:rgba(255,59,87,.12);border:1px solid rgba(255,59,87,.26)}
+.region-dot{width:7px;height:7px;border-radius:50%;background:var(--crit);box-shadow:0 0 7px var(--crit);animation:blink 1.3s infinite;flex-shrink:0}
+
+/* ============ POSTURE ============ */
+.threat-scale{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.ts-row{display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:.06em;padding:4px 8px;border-radius:4px;border:1px solid transparent;color:var(--dim);transition:.3s}
+.ts-step{width:15px;text-align:center;font-weight:700;color:var(--dim)}
+.ts-row.act{color:#fff;border-color:rgba(255,255,255,.1)}
+.ts-row.act .ts-step{color:#fff}
+.ts-row.act.l1{background:rgba(52,211,153,.14)}.ts-row.act.l2{background:rgba(56,189,248,.14)}
+.ts-row.act.l3{background:rgba(251,191,36,.15)}.ts-row.act.l4{background:rgba(255,159,46,.16)}.ts-row.act.l5{background:rgba(255,59,87,.2);animation:threatPulse 2s infinite}
+@keyframes threatPulse{0%,100%{box-shadow:0 0 0 rgba(255,59,87,0)}50%{box-shadow:0 0 20px rgba(255,59,87,.32)}}
+.ts-bar{flex:1;height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
+.ts-bar i{display:block;height:100%;width:0;transition:width .8s}
+.gauge-wrap{display:flex;align-items:center;gap:14px;padding:6px 2px 12px;border-bottom:1px solid var(--line-2);margin-bottom:12px}
+.gauge{position:relative;width:104px;height:104px;flex-shrink:0}
+.gauge svg{transform:rotate(-90deg)}
+.gauge-mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center;line-height:1}
+.gauge-mid b{font-family:var(--sans);font-size:25px;font-weight:800;color:#eaf4f3}
+.gauge-mid small{display:block;font-size:8.6px;color:var(--dim);letter-spacing:.14em;margin-top:3px}
+.gauge-info h3{font-family:var(--sans);font-size:11px;letter-spacing:.1em;color:var(--acc);text-transform:uppercase;margin-bottom:5px}
+.gauge-info p{font-size:10.2px;color:var(--mut);line-height:1.55}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.metric{border:1px solid var(--line-2);border-radius:6px;padding:8px 9px;background:rgba(255,255,255,.015);transition:.2s}
+.metric:hover{border-color:rgba(45,212,191,.24)}
+.metric .m-l{font-size:9.2px;color:var(--dim);letter-spacing:.09em;text-transform:uppercase}
+.metric .m-v{font-family:var(--sans);font-size:16px;font-weight:700;color:#dcecea;margin:3px 0 5px}
+.metric .bar-track{margin-top:0}
+
+/* ============ ALERT QUEUE ============ */
+.alert-row{
+  display:grid;grid-template-columns:3px 1fr;gap:0;
+  border:1px solid var(--line-2);border-radius:6px;margin-bottom:7px;
+  background:rgba(255,255,255,.012);cursor:pointer;overflow:hidden;
+  transition:.18s;animation:slideIn .35s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+.alert-row:hover{background:rgba(45,212,191,.05);border-color:rgba(45,212,191,.24)}
+.alert-row.sel{border-color:rgba(45,212,191,.5);background:rgba(45,212,191,.08);box-shadow:inset 0 0 24px rgba(45,212,191,.05)}
+.alert-row .sev-bar{background:var(--mut)}
+.alert-row.sv-critical .sev-bar{background:var(--crit);box-shadow:0 0 12px var(--crit)}
+.alert-row.sv-high .sev-bar{background:var(--high)}
+.alert-row.sv-medium .sev-bar{background:var(--med)}
+.alert-row.sv-low .sev-bar{background:var(--low)}
+.alert-in{padding:8px 10px;min-width:0}
+.alert-top{display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap}
+.sev-badge{font-size:8.8px;font-weight:800;letter-spacing:.11em;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.sv-critical .sev-badge,.sev-critical .sev-badge{color:var(--crit);background:rgba(255,59,87,.14);border:1px solid rgba(255,59,87,.35)}
+.badge-critical{color:var(--crit);background:rgba(255,59,87,.14);border:1px solid rgba(255,59,87,.35)}
+.badge-high{color:var(--high);background:rgba(255,159,46,.13);border:1px solid rgba(255,159,46,.32)}
+.badge-medium{color:var(--med);background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3)}
+.badge-low{color:var(--low);background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3)}
+.alert-title{font-size:11.3px;color:#dbe9e8;font-weight:600;line-height:1.35;margin-bottom:5px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:8.9px;letter-spacing:.05em;padding:1.5px 6px;border-radius:3px;border:1px solid var(--line-2);color:var(--mut);background:rgba(255,255,255,.02);white-space:nowrap}
+.chip.src{border-color:rgba(45,212,191,.28);color:var(--acc);background:rgba(45,212,191,.07)}
+.chip.mitre{border-color:rgba(168,85,247,.28);color:#c9a6f5;background:rgba(168,85,247,.09);font-family:var(--mono)}
+.chip.new{color:var(--ok);border-color:rgba(52,211,153,.4);animation:blink 1.1s infinite}
+.alert-foot{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:9.4px;color:var(--dim)}
+.alert-foot .conf{color:var(--acc)}
+
+/* ============ TRIAGE ============ */
+.tri-head{border:1px solid var(--line);border-radius:7px;padding:10px 11px;background:linear-gradient(150deg,rgba(45,212,191,.07),rgba(255,255,255,.01));margin-bottom:11px}
+.tri-head .th-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.tri-head h3{font-family:var(--sans);font-size:12.5px;color:#e6f2f1;font-weight:700;line-height:1.35}
+.ai-tag{display:inline-flex;align-items:center;gap:5px;font-size:9px;letter-spacing:.12em;color:var(--acc);border:1px solid rgba(45,212,191,.35);border-radius:4px;padding:2px 7px;background:rgba(45,212,191,.08)}
+.ai-tag i{width:5px;height:5px;border-radius:50%;background:var(--acc);box-shadow:0 0 7px var(--acc);animation:blink 1.2s infinite}
+.sect-lbl{font-size:9.3px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin:12px 0 7px;display:flex;align-items:center;gap:8px}
+.sect-lbl::after{content:"";flex:1;height:1px;background:var(--line-2)}
+.think{border-left:2px solid rgba(45,212,191,.28);padding-left:11px;display:flex;flex-direction:column;gap:7px}
+.step{display:flex;gap:8px;font-size:10.5px;color:var(--mut);opacity:0;transform:translateY(6px);animation:stepIn .38s ease forwards}
+@keyframes stepIn{to{opacity:1;transform:none}}
+.step .st-ico{width:14px;height:14px;flex-shrink:0;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line);font-size:8px;color:var(--dim);margin-top:1px}
+.step.done .st-ico{color:var(--ok);border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.1)}
+.step.done{color:var(--txt)}
+.step.run .st-ico{color:var(--acc);border-color:rgba(45,212,191,.5);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.step b{color:var(--acc);font-weight:600}
+.enrich{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.en-card{border:1px solid var(--line-2);border-radius:6px;padding:7px 9px;background:rgba(255,255,255,.015);font-size:10px}
+.en-card .e-k{font-size:8.8px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
+.en-card .e-v{color:#d7e6e4;font-size:10.4px;line-height:1.4}
+.en-card .e-v.hot{color:var(--high)}
+.en-card .e-v.crit{color:var(--crit)}
+.en-card.full{grid-column:span 2}
+.ti-list{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.ti-list span{font-size:9.7px;color:var(--mut)}
+.ti-list span::before{content:"▸ ";color:var(--acc)}
+.conf-wrap{margin-top:9px;border:1px solid var(--line-2);border-radius:6px;padding:9px;background:rgba(255,255,255,.015)}
+.conf-top{display:flex;justify-content:space-between;font-size:10px;color:var(--mut);margin-bottom:6px;letter-spacing:.06em}
+.conf-top b{color:var(--acc);font-size:13px;font-family:var(--sans)}
+.conf-track{height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.conf-fill{height:100%;width:0;background:linear-gradient(90deg,#0d9488,var(--acc));box-shadow:0 0 10px var(--acc);transition:width .9s cubic-bezier(.4,0,.2,1)}
+.recs{display:flex;flex-direction:column;gap:6px}
+.rec{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line-2);border-radius:6px;padding:7px 9px;font-size:10.3px;color:var(--mut);background:rgba(255,255,255,.015);transition:.18s}
+.rec:hover{border-color:rgba(45,212,191,.24);color:var(--txt)}
+.rec .r-n{color:var(--acc);font-weight:700;flex-shrink:0}
+.rec .r-t{color:#d7e6e4;flex:1;line-height:1.45}
+.rec button{
+  flex-shrink:0;background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.3);color:var(--acc);
+  font-family:var(--mono);font-size:9.2px;letter-spacing:.08em;padding:3px 8px;border-radius:4px;cursor:pointer;transition:.16s;white-space:nowrap;
+}
+.rec button:hover{background:rgba(45,212,191,.22);box-shadow:0 0 12px rgba(45,212,191,.2)}
+.gate{
+  margin-top:11px;display:flex;align-items:center;gap:9px;
+  border:1px dashed rgba(251,191,36,.4);border-radius:6px;padding:8px 10px;
+  background:rgba(251,191,36,.055);font-size:10.1px;color:#cbb87e;
+}
+.gate b{color:var(--med);letter-spacing:.09em;font-size:9.8px}
+
+/* ============ TIMELINE ============ */
+.tl{position:relative;padding-left:16px}
+.tl::before{content:"";position:absolute;left:4px;top:4px;bottom:4px;width:1px;background:linear-gradient(180deg,var(--acc),rgba(45,212,191,.05))}
+.tl-item{position:relative;padding:0 0 13px 0;animation:slideIn .4s ease}
+.tl-item::before{content:"";position:absolute;left:-15px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--bg-2);border:2px solid var(--acc);box-shadow:0 0 8px rgba(45,212,191,.6)}
+.tl-item.crit::before{border-color:var(--crit);box-shadow:0 0 9px var(--crit)}
+.tl-item.high::before{border-color:var(--high);box-shadow:0 0 9px var(--high)}
+.tl-time{font-size:9.4px;color:var(--acc);letter-spacing:.07em;margin-bottom:2px}
+.tl-src{font-size:8.8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+.tl-txt{font-size:10.5px;color:var(--txt);line-height:1.45;margin-top:1px}
+.tl-txt code{color:var(--high);background:rgba(255,159,46,.09);padding:0 3px;border-radius:2px;font-size:10px}
+.logs{background:rgba(0,0,0,.4);border:1px solid var(--line-2);border-radius:6px;padding:9px;font-size:9.7px;line-height:1.75;color:#7f9aae;overflow-x:auto;white-space:pre;max-height:150px;overflow-y:auto}
+.logs .k{color:var(--acc)}.logs .r{color:var(--crit)}.logs .w{color:var(--high)}
+.qchip{
+  display:inline-block;margin:0 5px 5px 0;font-size:9.5px;
+  border:1px solid var(--line-2);border-radius:4px;padding:3px 8px;color:var(--mut);
+  background:rgba(255,255,255,.02);cursor:pointer;transition:.16s;
+}
+.qchip:hover{border-color:rgba(45,212,191,.4);color:var(--acc);background:rgba(45,212,191,.07)}
+
+/* ============ RULES ============ */
+.rule{display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:6px;border:1px solid var(--line-2);margin-bottom:6px;background:rgba(255,255,255,.012);transition:.18s}
+.rule:hover{border-color:rgba(45,212,191,.22);background:rgba(45,212,191,.035)}
+.rule.off{opacity:.42}
+.rule-l{flex:1;min-width:0}
+.rule-name{font-size:10.7px;color:#dbe9e8;font-weight:600;line-height:1.35;margin-bottom:4px}
+.rule-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.hits{font-size:9.2px;color:var(--dim);white-space:nowrap}
+.hits b{color:var(--high);font-size:11px}
+.switch{position:relative;width:34px;height:17px;flex-shrink:0;cursor:pointer}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.sw-track{position:absolute;inset:0;border-radius:9px;background:rgba(255,255,255,.09);border:1px solid var(--line-2);transition:.22s}
+.sw-track::after{content:"";position:absolute;left:2px;top:1.5px;width:11px;height:11px;border-radius:50%;background:var(--dim);transition:.22s}
+.switch input:checked + .sw-track{background:rgba(45,212,191,.24);border-color:rgba(45,212,191,.5)}
+.switch input:checked + .sw-track::after{left:18px;background:var(--acc);box-shadow:0 0 9px var(--acc)}
+
+/* ============ SOAR ============ */
+.posture-badge{
+  display:inline-flex;align-items:center;gap:7px;font-size:9.6px;letter-spacing:.11em;
+  border:1px solid rgba(251,191,36,.4);color:var(--med);border-radius:4px;padding:3px 9px;background:rgba(251,191,36,.07);
+}
+.posture-badge .lk{font-size:10px}
+.soar-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.soar-card{
+  border:1px solid var(--line-2);border-radius:7px;padding:10px 11px;
+  background:linear-gradient(160deg,rgba(255,255,255,.022),rgba(255,255,255,.008));
+  transition:.2s;position:relative;overflow:hidden;
+}
+.soar-card:hover{border-color:rgba(45,212,191,.26)}
+.soar-card.proposed{border-color:rgba(45,212,191,.4);box-shadow:inset 0 0 22px rgba(45,212,191,.05)}
+.soar-card.executed{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.045)}
+.soar-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.soar-name{font-size:11px;color:#dbe9e8;font-weight:600;flex:1;line-height:1.3}
+.soar-impact{font-size:9.2px;color:var(--dim);margin-bottom:2px}
+.soar-impact b{color:var(--dim);font-weight:600}
+.soar-impact .rb{color:var(--high)}
+.soar-foot{display:flex;gap:6px;margin-top:9px}
+.btn{
+  font-family:var(--mono);font-size:9.4px;letter-spacing:.09em;
+  padding:5px 11px;border-radius:4px;cursor:pointer;transition:.17s;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);
+}
+.btn:hover{border-color:rgba(45,212,191,.4);color:var(--acc);background:rgba(45,212,191,.08)}
+.btn.primary{border-color:rgba(45,212,191,.4);color:var(--acc);background:rgba(45,212,191,.1)}
+.btn.primary:hover{background:rgba(45,212,191,.2);box-shadow:0 0 14px rgba(45,212,191,.18)}
+.btn.warn{border-color:rgba(251,191,36,.4);color:var(--med);background:rgba(251,191,36,.09)}
+.btn.warn:hover{background:rgba(251,191,36,.18)}
+.btn.danger{border-color:rgba(255,59,87,.45);color:#ff8095;background:rgba(255,59,87,.11)}
+.btn.danger:hover:not(:disabled){background:rgba(255,59,87,.24);box-shadow:0 0 16px rgba(255,59,87,.24)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:transparent}
+
+/* ============ AUDIT ============ */
+.audit-row{display:grid;grid-template-columns:auto auto 1fr auto;gap:8px;align-items:baseline;padding:5px 7px;border-radius:5px;font-size:9.9px;border-left:2px solid var(--line);transition:.18s;animation:slideIn .35s ease}
+.audit-row:hover{background:rgba(45,212,191,.04)}
+.audit-row.a-ai{border-left-color:var(--acc)}
+.audit-row.a-human{border-left-color:var(--high)}
+.audit-row.a-ok{border-left-color:var(--ok)}
+.audit-row.a-deny{border-left-color:var(--crit)}
+.audit-row.a-sys{border-left-color:var(--dim)}
+.audit-id{color:var(--dim);font-size:9.2px}
+.audit-actor{font-weight:700;letter-spacing:.05em;white-space:nowrap}
+.a-ai .audit-actor{color:var(--acc)}
+.a-human .audit-actor{color:var(--high)}
+.a-ok .audit-actor{color:var(--ok)}
+.a-deny .audit-actor{color:var(--crit)}
+.a-sys .audit-actor{color:var(--mut)}
+.audit-txt{color:var(--mut);line-height:1.4;min-width:0}
+.audit-txt b{color:#cfe3e0;font-weight:600}
+.audit-time{color:var(--dim);font-size:9.2px;white-space:nowrap}
+
+/* ============ TOASTS / MODAL ============ */
+.toasts{position:fixed;right:18px;bottom:18px;z-index:9990;display:flex;flex-direction:column;gap:8px;max-width:340px}
+.toast{
+  border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:7px;
+  background:rgba(9,15,22,.96);backdrop-filter:blur(12px);padding:9px 13px;font-size:10.6px;color:var(--txt);
+  box-shadow:0 12px 38px rgba(0,0,0,.7);animation:toastIn .32s cubic-bezier(.2,.9,.3,1);
+}
+.toast.crit{border-left-color:var(--crit)}.toast.warn{border-left-color:var(--med)}.toast.ok{border-left-color:var(--ok)}
+.toast .t-t{font-weight:700;letter-spacing:.07em;font-size:9.6px;text-transform:uppercase;margin-bottom:3px;color:var(--acc)}
+.toast.crit .t-t{color:var(--crit)}.toast.warn .t-t{color:var(--med)}.toast.ok .t-t{color:var(--ok)}
+@keyframes toastIn{from{opacity:0;transform:translateX(30px) scale(.96)}to{opacity:1;transform:none}}
+.toast.out{animation:toastOut .3s forwards}
+@keyframes toastOut{to{opacity:0;transform:translateX(30px)}}
+
+.overlay{
+  position:fixed;inset:0;z-index:9995;display:none;place-items:center;
+  background:rgba(2,4,7,.82);backdrop-filter:blur(7px);padding:20px;
+}
+.overlay.on{display:grid;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  width:min(620px,100%);border:1px solid rgba(251,191,36,.35);border-radius:10px;
+  background:linear-gradient(170deg,rgba(15,21,28,.99),rgba(9,13,19,.99));
+  box-shadow:0 30px 90px rgba(0,0,0,.85),0 0 40px rgba(251,191,36,.09);
+  animation:modalIn .28s cubic-bezier(.2,.9,.3,1);overflow:hidden;max-height:90vh;display:flex;flex-direction:column;
+}
+@keyframes modalIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+.modal-head{display:flex;gap:12px;padding:16px 18px;border-bottom:1px solid rgba(251,191,36,.18);background:rgba(251,191,36,.05)}
+.modal-ico{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;border:1px solid rgba(251,191,36,.5);border-radius:7px;color:var(--med);font-size:17px;background:rgba(251,191,36,.08)}
+.modal-head h3{font-family:var(--sans);font-size:13.5px;letter-spacing:.1em;color:var(--med);margin-bottom:4px}
+.modal-head p{font-size:10.4px;color:var(--mut);line-height:1.5}
+.modal-body{padding:16px 18px;overflow-y:auto}
+.approve-action{border:1px solid var(--line);border-radius:7px;padding:11px 13px;background:rgba(255,255,255,.02);margin-bottom:15px}
+.approve-action .aa-name{font-size:12px;color:#e6f2f1;font-weight:700;margin-bottom:6px}
+.approve-action .aa-row{display:flex;justify-content:space-between;gap:12px;font-size:10.2px;color:var(--mut);padding:2px 0}
+.approve-action .aa-row span:last-child{color:#cfe3e0;text-align:right}
+.modal label{display:block;font-size:9.6px;letter-spacing:.11em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.modal textarea{
+  width:100%;min-height:74px;resize:vertical;font-family:var(--mono);font-size:10.8px;
+  background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:6px;color:var(--txt);padding:9px 11px;outline:none;transition:.18s;
+}
+.modal textarea:focus{border-color:rgba(45,212,191,.45);box-shadow:0 0 0 3px rgba(45,212,191,.08)}
+.modal-note{margin-top:11px;font-size:9.8px;color:var(--dim);line-height:1.55;border-left:2px solid rgba(251,191,36,.3);padding-left:9px}
+.modal-foot{display:flex;justify-content:flex-end;gap:9px;padding:13px 18px;border-top:1px solid var(--line-2);background:rgba(0,0,0,.25)}
+
+@media (max-width:1500px){
+  .kpi-row{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:1240px){
+  .grid{grid-template-columns:repeat(6,1fr)}
+  .span3,.span4,.span5{grid-column:span 3}
+  .span6,.span7,.span8{grid-column:span 6}
+}
+@media (max-width:900px){
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .grid{grid-template-columns:1fr}
+  .span3,.span4,.span5,.span6,.span7,.span8{grid-column:span 1}
+  .tabs{display:none}
+  .topbar-status .status-chip:not(.live):not(.clock){display:none}
+  .soar-grid{grid-template-columns:1fr}
+  .wrap{padding:12px 12px 30px}
+}
+@media (max-width:560px){
+  .kpi-row{grid-template-columns:1fr}
+  .enrich{grid-template-columns:1fr}
+  .en-card.full{grid-column:span 1}
+  .metrics{grid-template-columns:1fr}
+  .guardrails{flex-direction:column}
+  .g-item{border-right:none;border-bottom:1px solid rgba(251,191,36,.1)}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">◈</div>
+    <div>
+      <div class="brand-name">SENTINEL<span>SOC</span></div>
+      <div class="brand-sub">Defensive Security Operations · v2.4.1</div>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-jump="row-overview">Overview</button>
+    <button class="tab" data-jump="row-triage">Triage</button>
+    <button class="tab" data-jump="row-detect">Detection</button>
+    <button class="tab" data-jump="row-response">Response</button>
+  </nav>
+  <div class="topbar-status">
+    <div class="status-chip live"><i></i>LIVE</div>
+    <div class="status-chip"><span class="k">INGEST</span><span class="v" id="ingestRate">1.42k/s</span></div>
+    <div class="status-chip"><span class="k">SENSORS</span><span class="v" id="sensorHealth">312/318</span></div>
+    <div class="status-chip"><span class="k">ANALYST</span><span class="v">m.reyes · TIER-2</span></div>
+    <div class="status-chip clock" id="clock">--:--:--Z</div>
+  </div>
+</header>
+
+<div class="guardrails">
+  <div class="g-item"><span class="g-ico">◐</span><span><b>READ-ONLY DEFAULT</b> — no containment or response action executes without explicit analyst approval</span></div>
+  <div class="g-item"><span class="g-ico">✕</span><span><b>NO AUTONOMOUS DESTRUCTION</b> — the AI proposes, humans decide; blast-radius caps enforced per action</span></div>
+  <div class="g-item"><span class="g-ico">▤</span><span><b>RBAC + FULL AUDIT</b> — every recommendation, approval and action is immutably logged with actor identity</span></div>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ KPI ROW ============ -->
+  <div class="kpi-row" id="row-overview">
+    <div class="kpi crit">
+      <div class="kpi-label"><span>Active Alerts</span><span id="kpiDeltaChip"></span></div>
+      <div class="kpi-val crit" id="kpiAlerts">0</div>
+      <div class="kpi-sub"><span id="kpiAlertsSub">triage queue depth</span></div>
+      <canvas class="spark" id="sparkAlerts" width="240" height="26"></canvas>
+    </div>
+    <div class="kpi crit">
+      <div class="kpi-label"><span>Critical Incidents</span><span>P1</span></div>
+      <div class="kpi-val" id="kpiCrit">0</div>
+      <div class="kpi-sub"><span id="kpiCritSub">escalated to IR bridge</span></div>
+    </div>
+    <div class="kpi low">
+      <div class="kpi-label"><span>Mean Time to Detect</span><span>MTTD</span></div>
+      <div class="kpi-val"><span id="kpiMttd">4.2</span><span class="unit">min</span></div>
+      <div class="kpi-sub"><span class="delta down" id="kpiMttdD">▼ 0.6</span><span>30d baseline 4.8</span></div>
+      <div class="bar-track"><div class="bar-fill" id="kpiMttdBar" style="width:62%"></div></div>
+    </div>
+    <div class="kpi high">
+      <div class="kpi-label"><span>Mean Time to Respond</span><span>MTTR</span></div>
+      <div class="kpi-val"><span id="kpiMttr">12.8</span><span class="unit">min</span></div>
+      <div class="kpi-sub"><span class="delta down" id="kpiMttrD">▼ 2.1</span><span>30d baseline 14.9</span></div>
+      <div class="bar-track"><div class="bar-fill" id="kpiMttrBar" style="width:71%"></div></div>
+    </div>
+    <div class="kpi ok">
+      <div class="kpi-label"><span>Assets Monitored</span><span>COVERAGE</span></div>
+      <div class="kpi-val"><span id="kpiAssets">14,208</span></div>
+      <div class="kpi-sub"><span>EDR 98.2%</span><span id="kpiAssetsSub">· 4 segments</span></div>
+      <div class="bar-track"><div class="bar-fill" id="kpiAssetsBar" style="width:98.2%"></div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ============ ROW A ============ -->
+    <section class="panel span5" id="panel-globe">
+      <div class="panel-head">
+        <span class="idx">01</span><h2>Global Attack Surface</h2>
+        <div class="panel-meta"><span class="dot-live"></span><span id="arcCount">0 live vectors</span></div>
+      </div>
+      <div class="panel-body">
+        <div class="globe-wrap">
+          <canvas id="globeMap"></canvas>
+          <div class="globe-badge">INBOUND EVENTS · 60s WINDOW</div>
+          <div class="globe-badge red" id="blockedBadge">BLOCKED 0</div>
+        </div>
+        <div class="origins" id="origins"></div>
+      </div>
+    </section>
+
+    <section class="panel span3" id="panel-posture">
+      <div class="panel-head">
+        <span class="idx">02</span><h2>Threat Posture</h2>
+      </div>
+      <div class="panel-body">
+        <div class="threat-scale" id="threatScale"></div>
+        <div class="gauge-wrap">
+          <div class="gauge">
+            <svg width="104" height="104" viewBox="0 0 104 104">
+              <circle cx="52" cy="52" r="44" fill="none" stroke="rgba(148,163,184,.12)" stroke-width="8"/>
+              <circle id="postureArc" cx="52" cy="52" r="44" fill="none" stroke="#2dd4bf" stroke-width="8"
+                stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="138" style="transition:stroke-dashoffset .9s cubic-bezier(.4,0,.2,1),stroke .5s"/>
+            </svg>
+            <div class="gauge-mid"><div><b id="postureVal">50</b><small>POSTURE</small></div></div>
+          </div>
+          <div class="gauge-info">
+            <h3 id="postureLabel">ELEVATED</h3>
+            <p id="postureDesc">Aggregate exposure across detection, hardening and identity controls.</p>
+          </div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="m-l">Detection Coverage</div><div class="m-v" id="mDetect">86%</div><div class="bar-track"><div class="bar-fill" id="mDetectBar" style="width:86%"></div></div></div>
+          <div class="metric"><div class="m-l">Patch Compliance</div><div class="m-v" id="mPatch">91%</div><div class="bar-track"><div class="bar-fill" id="mPatchBar" style="width:91%"></div></div></div>
+          <div class="metric"><div class="m-l">MFA Coverage</div><div class="m-v" id="mMfa">78%</div><div class="bar-track"><div class="bar-fill" id="mMfaBar" style="width:78%"></div></div></div>
+          <div class="metric"><div class="m-l">EDR Health</div><div class="m-v" id="mEdr">96%</div><div class="bar-track"><div class="bar-fill" id="mEdrBar" style="width:96%"></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel span4" id="panel-rules">
+      <div class="panel-head">
+        <span class="idx">03</span><h2>Detection Rules</h2>
+        <div class="panel-meta"><span id="rulesActive">0/0 enabled</span><span>·</span><span id="rulesHits">0 hits/24h</span></div>
+      </div>
+      <div class="panel-body">
+        <div class="scroll" id="rulesBody" style="--h:352px"></div>
+      </div>
+    </section>
+
+    <!-- ============ ROW B ============ -->
+    <section class="panel span4" id="panel-queue">
+      <div class="panel-head">
+        <span class="idx">04</span><h2>Alert Triage Queue</h2>
+        <div class="panel-meta"><span class="dot-live"></span><span id="queueCount">0 active</span></div>
+      </div>
+      <div class="panel-body">
+        <div class="scroll" id="queueBody" style="--h:560px"></div>
+      </div>
+    </section>
+
+    <section class="panel span4" id="panel-triage">
+      <div class="panel-head">
+        <span class="idx">05</span><h2>AI Triage Agent</h2>
+        <div class="panel-meta"><span class="ai-tag"><i></i>ARIA-CHIEF</span></div>
+      </div>
+      <div class="panel-body">
+        <div class="scroll" id="triageBody" style="--h:560px"></div>
+      </div>
+    </section>
+
+    <section class="panel span4" id="panel-timeline">
+      <div class="panel-head">
+        <span class="idx">06</span><h2>Investigation Timeline</h2>
+        <div class="panel-meta"><span id="tlCase">NO CASE</span></div>
+      </div>
+      <div class="panel-body">
+        <div class="scroll" id="timelineBody" style="--h:560px"></div>
+      </div>
+    </section>
+
+    <!-- ============ ROW C ============ -->
+    <section class="panel span8" id="panel-soar">
+      <div class="panel-head">
+        <span class="idx">07</span><h2>Response Playbooks · SOAR</h2>
+        <div class="panel-meta">
+          <span class="posture-badge"><span class="lk">⛨</span>READ-ONLY MODE · ADVISORY</span>
+          <span id="execCount">0 executed</span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="soar-grid" id="soarBody"></div>
+      </div>
+    </section>
+
+    <section class="panel span4" id="panel-audit">
+      <div class="panel-head">
+        <span class="idx">08</span><h2>Immutable Audit Log</h2>
+        <div class="panel-meta"><span class="dot-live"></span><span>append-only</span></div>
+      </div>
+      <div class="panel-body">
+        <div class="scroll" id="auditBody" style="--h:430px"></div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ============ APPROVAL MODAL ============ -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <div class="modal-ico">⚠</div>
+      <div>
+        <h3 id="modalTitle">HUMAN APPROVAL REQUIRED</h3>
+        <p>This is a state-changing response action. Sentinel does not execute containment autonomously — an accountable analyst must review and approve.</p>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="approve-action" id="modalAction"></div>
+      <label for="justification">Justification — required, recorded in the immutable audit log</label>
+      <textarea id="justification" placeholder="e.g. Beaconing corroborated by 3 intel sources; host is PCI-scoped. Approving isolation per IR-2026-4471."></textarea>
+      <div class="modal-note">Blast radius is capped by policy: 1 host / 1 account per action. Rollback instructions are attached automatically. Actions are reversible and time-boxed to 4 hours unless extended.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="denyBtn">Deny</button>
+      <button class="btn danger" id="approveBtn" disabled>Approve &amp; Execute</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<noscript><div style="padding:30px;color:#c7d5e0;font-family:monospace">Sentinel SOC requires JavaScript to render the live console.</div></noscript>
+
+<script>
+/* ============================================================
+   SENTINEL SOC — simulated defensive console
+   All data is synthetic. No real systems are touched.
+   ============================================================ */
+(function(){
+"use strict";
+const $ = (s,r)=> (r||document).querySelector(s);
+const $$ = (s,r)=> Array.prototype.slice.call((r||document).querySelectorAll(s));
+const rand = (a,b)=> a + Math.random()*(b-a);
+const ri = (a,b)=> Math.floor(rand(a,b+1));
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const clamp = (v,a,b)=> Math.max(a, Math.min(b,v));
+const pad = n => String(n).padStart(2,'0');
+const now = ()=> Date.now();
+function tstamp(d){const t=new Date(d);return pad(t.getUTCHours())+':'+pad(t.getUTCMinutes())+':'+pad(t.getUTCSeconds())+'Z';}
+function ago(t){const s=Math.max(0,Math.floor((now()-t)/1000));if(s<60)return s+'s ago';const m=Math.floor(s/60);if(m<60)return m+'m ago';return Math.floor(m/60)+'h ago';}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ---------------- TOASTS ---------------- */
+function toast(title,msg,type){
+  const el=document.createElement('div');
+  el.className='toast '+(type||'');
+  el.innerHTML='<div class="t-t">'+esc(title)+'</div>'+esc(msg);
+  $('#toasts').appendChild(el);
+  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),320);},5200);
+}
+
+/* ---------------- STATE ---------------- */
+const state = {
+  alerts: [], selected: null, rules: [], audit: [], soar: [],
+  threatLevel: 3, posture: 71, gen: 0, executed: 0, auditSeq: 930,
+  spark: [], origins: {}, arcs: [], pendingAction: null
+};
+
+/* ---------------- ALERT DATA ---------------- */
+const SRC_LABEL = {endpoint:'ENDPOINT', network:'NETWORK', cloud:'CLOUD', identity:'IDENTITY', email:'EMAIL'};
+let alertSeq = 4471;
+function mk(o){
+  const base = { id:'ALT-'+(++alertSeq), sev:'medium', src:'endpoint', mitre:[], conf:0.7,
+    ts: now()-ri(20000,90000), status:'new', asset:'—', host:'—', ip:'—', user:'—',
+    title:'Anomalous activity detected' };
+  return Object.assign(base, o);
+}
+
+const SEED_ALERTS = [
+  mk({id:'ALT-4471', sev:'critical', src:'endpoint',
+    title:'LSASS memory read by unsigned binary',
+    asset:'WKS-4471 · FIN-WS-14', host:'WKS-4471', ip:'10.14.22.87', user:'j.alvarez',
+    mitre:['T1003.001','T1055'], conf:0.94, status:'triage',
+    ti:['VirusTotal · 14/72 engines malicious','AbuseIPDB · confidence score 100%','AlienVault OTX · Cobalt Strike beacon pulse'],
+    geo:'AS204601 · RU · Moscow · 185.220.101.47',
+    crit:'HIGH — PCI-scoped asset, tier-1 criticality',
+    reason:'Unsigned binary opened LSASS with PROCESS_VM_READ; parent chain powershell.exe -enc → rundll32.exe (masquerade). Outbound TLS beacon to 185.220.101.47 every 60s ±3s — jitter profile matches Cobalt Strike default. Corroborated by three independent intel sources.'}),
+  mk({sev:'critical', src:'identity',
+    title:'Impossible-travel sign-in then MFA fatigue push',
+    asset:'IDP · Azure AD tenant', host:'AAD-CONNECTOR-02', ip:'45.133.1.19', user:'r.okafor',
+    mitre:['T1078.004','T1621','T1110.003'], conf:0.91, status:'triage',
+    ti:['Sign-in from Lagos NG 03:12 → Amsterdam NL 03:44','47 MFA push prompts in 6 min','Password spray signature from /24'],
+    geo:'AS9009 · NL · Amsterdam · 45.133.1.19',
+    crit:'HIGH — global admin directory role',
+    reason:'Credential valid but session geography impossible; MFA push volume indicates fatigue attack. Password spray signature observed from the same /24 against 214 accounts in the preceding hour.'}),
+  mk({sev:'high', src:'network',
+    title:'Periodic C2 beacon to new domain (TLS JA3 mismatch)',
+    asset:'EDGE-FW-01 · DMZ', host:'EDGE-FW-01', ip:'203.0.113.44', user:'—',
+    mitre:['T1071.001','T1573.002'], conf:0.86, status:'triage',
+    ti:['Domain registered 6 days ago','Passive DNS: no prior history','JA3 fingerprint 96 unique to loader family'],
+    geo:'AS13335 · SG · Singapore · 203.0.113.44',
+    crit:'MEDIUM — perimeter device, egress path',
+    reason:'Beacon interval standard deviation of 2.7s over 5 hours indicates synthetic rather than human traffic. TLS JA3 hash does not match the declared browser user-agent.'}),
+  mk({sev:'high', src:'endpoint',
+    title:'Ransomware canary file modified — pre-encryption staging',
+    asset:'FS-SRV-07 · FILE TIER-1', host:'FS-SRV-07', ip:'10.14.9.7', user:'svc_backup',
+    mitre:['T1486','T1490','T1083'], conf:0.88, status:'triage',
+    ti:['Canary modified 00:41','VSS shadow copies enumerated','Recycle bin mass-delete in progress'],
+    geo:'INTERNAL · EAST-WING VLAN 40',
+    crit:'CRITICAL — file server hosts 4.2TB of regulated records',
+    reason:'Canary trip preceded by shadow-copy enumeration and mass file discovery — the canonical pre-encryption staging sequence. Lateral SMB sessions from three workstations in the same minute.'}),
+  mk({sev:'medium', src:'cloud',
+    title:'IAM policy attached granting wildcard on s3:*',
+    asset:'AWS · prod-analytics', host:'PROD-ANALYTICS', ip:'—', user:'ci-deploy-role',
+    mitre:['T1098.003','T1078.004'], conf:0.74, status:'triage',
+    ti:['Policy version 4 → 5 today','Granted by CI role, not a human','Diff adds Action:* Resource:*'],
+    geo:'AS16509 · US-EAST-1',
+    crit:'HIGH — production data plane',
+    reason:'A build pipeline role attached an administrative policy outside of any approved change window. No corresponding ticket exists in the change-management system.'}),
+  mk({sev:'medium', src:'network',
+    title:'DNS tunneling pattern — high-entropy subdomain queries',
+    asset:'CORP-DNS-01', host:'CORP-DNS-01', ip:'10.14.1.53', user:'—',
+    mitre:['T1048.003','T1071.004'], conf:0.68, status:'new',
+    ti:['1,847 queries to d.cdn-relay.net in 12 min','Subdomain entropy 4.31 bits/char','TXT record response size 512B constant'],
+    geo:'INTERNAL · RECURSIVE RESOLVER',
+    crit:'MEDIUM — primary resolver for 3 sites',
+    reason:'Entropy and query rate are consistent with data exfiltration over DNS rather than legitimate CDN resolution. Baseline for this domain is zero queries.'}),
+  mk({sev:'low', src:'endpoint',
+    title:'Blocked exploit attempt — CVE-2026-21445 (drive-by)',
+    asset:'WKS-2209 · MARKETING', host:'WKS-2209', ip:'10.15.44.21', user:'t.nakamura',
+    mitre:['T1203','T1189'], conf:0.62, status:'closed',
+    ti:['Blocked inline by EDR at kernel boundary','Browser sandbox intact','No child process spawned'],
+    geo:'AS15169 · US · Chicago · 142.250.72.14',
+    crit:'LOW — non-privileged user, no data access',
+    reason:'Exploit payload was blocked before execution; no post-exploitation indicators. Retained for vulnerability-trend analytics rather than active response.'}),
+  mk({sev:'high', src:'identity',
+    title:'Kerberoasting — anomalous SPN ticket requests',
+    asset:'DC-01 · ACTIVE DIRECTORY', host:'DC-01', ip:'10.14.0.10', user:'svc_sql',
+    mitre:['T1558.003','T1087.002'], conf:0.83, status:'triage',
+    ti:['312 TGS requests in 90s','RC4 encryption downgrade requested','Account normally issues 4 tickets/day'],
+    geo:'INTERNAL · DC VLAN 10',
+    crit:'CRITICAL — domain controller',
+    reason:'Volume and encryption-type requests are inconsistent with any legitimate service activity. Sequence matches automated SPN enumeration tooling.'})
+];
+
+/* ---------------- INJECTION POOL ---------------- */
+const INJECT = [
+  {sev:'high', src:'endpoint', title:'Suspicious service installed from temp path',
+   mitre:['T1543.003','T1059.001'], asset:'WKS-', host:'WKS-', user:'SYSTEM'},
+  {sev:'medium', src:'network', title:'Outbound SMB to non-standard port 4445',
+   mitre:['T1021.002'], asset:'WKS-', host:'WKS-', user:'—'},
+  {sev:'critical', src:'cloud', title:'Root account API key used from unrecognised ASN',
+   mitre:['T1078.004','T1552.001'], asset:'AWS · ', host:'CLOUD-GW', user:'root'},
+  {sev:'medium', src:'identity', title:'Password spray — 214 accounts, low-and-slow',
+   mitre:['T1110.003'], asset:'IDP · ', host:'AAD-CONNECTOR-01', user:'—'},
+  {sev:'high', src:'endpoint', title:'Office macro spawned encoded PowerShell child',
+   mitre:['T1204.002','T1059.001'], asset:'WKS-', host:'WKS-', user:'—'},
+  {sev:'low', src:'endpoint', title:'Unsigned driver load attempt blocked',
+   mitre:['T1014','T1543.003'], asset:'WKS-', host:'WKS-', user:'—'},
+  {sev:'high', src:'network', title:'Lateral movement sweep across VLAN 40',
+   mitre:['T1046','T1021.002'], asset:'SEG-', host:'SW-CORE-01', user:'—'},
+  {sev:'medium', src:'email', title:'Spearphish with weaponised attachment (sandbox detonation)',
+   mitre:['T1566.001','T1204.002'], asset:'MAIL-GW-01', host:'MAIL-GW-01', user:'—'},
+];
+
+/* ---------------- RULES ---------------- */
+const RULE_SEED = [
+  ['LSASS Memory Access via Non-System Process','critical','T1003.001',true,12,'Sysmon EID 10'],
+  ['PowerShell Encoded Command Execution','high','T1059.001',true,148,'PowerShell 4104'],
+  ['Suspicious Outbound Beaconing Pattern','high','T1071.001',true,31,'Zeek conn.log'],
+  ['Kerberoasting — Service Ticket Request Spike','high','T1558.003',true,7,'Security 4769'],
+  ['Cloud IAM Privilege Escalation — Policy Attach','critical','T1098.003',true,4,'CloudTrail'],
+  ['Brute Force — Failed Authentication Threshold','medium','T1110.001',true,86,'Security 4625'],
+  ['SMB Lateral Tool Transfer','high','T1021.002',true,19,'Zeek smb_files'],
+  ['Registry Run Key Persistence','medium','T1547.001',true,23,'Sysmon EID 13'],
+  ['DNS Tunneling Exfiltration Pattern','high','T1048.003',true,9,'DNS query entropy'],
+  ['Disabled EDR Agent Service','critical','T1562.001',false,0,'Sysmon EID 1'],
+  ['Scheduled Task Created by Non-Admin','medium','T1053.005',true,44,'Security 4698'],
+  ['Canary File Modified — Ransomware Staging','critical','T1486',true,2,'FIM canary']
+];
+
+/* ---------------- INIT DATA ---------------- */
+SEED_ALERTS.forEach(a=>{
+  if(a.src==='endpoint'||a.src==='network'||a.src==='cloud'){ if(a.geo && a.geo.indexOf('INTERNAL')===-1){} }
+  state.alerts.push(a);
+});
+state.rules = RULE_SEED.map((r,i)=>({name:r[0],level:r[1],tech:r[2],on:r[3],hits:r[4],log:r[5],id:'SIG-'+String(1200+i)}));
+state.soar = [
+  {id:'PB-01', name:'Isolate Host from Network', target:'WKS-4471 · FIN-WS-14', impact:'Blast radius: 1 host · EDR agent-level containment, reversible', needs:'endpoint', proposed:false, executed:false},
+  {id:'PB-02', name:'Block IP at Perimeter', target:'185.220.101.47 / egress', impact:'Blast radius: 1 /32 · edge firewall + DNS sinkhole, reversible', needs:'network', proposed:false, executed:false},
+  {id:'PB-03', name:'Disable User Account', target:'r.okafor · Entra ID', impact:'Blast radius: 1 identity · sessions revoked, requires HR liaison', needs:'identity', proposed:false, executed:false},
+  {id:'PB-04', name:'Kill Process Tree', target:'PID 8112 · rundll32.exe', impact:'Blast radius: 1 process tree · volatile memory preserved first', needs:'endpoint', proposed:false, executed:false},
+  {id:'PB-05', name:'Revoke Cloud Sessions', target:'ci-deploy-role · prod-analytics', impact:'Blast radius: 1 role · may interrupt active pipelines', needs:'cloud', proposed:false, executed:false},
+  {id:'PB-06', name:'Snapshot Forensic Image', target:'FS-SRV-07 · volume C:', impact:'Non-destructive · read-only capture, ~40 min, 4.2TB', needs:'endpoint', proposed:false, executed:false}
+];
+
+/* ---------------- ORIGINS ---------------- */
+const ORIGIN_SEED = [
+  ['RU','Moscow',55.75,37.62,34],['CN','Shanghai',31.23,121.47,28],['NL','Amsterdam',52.37,4.90,21],
+  ['IR','Tehran',35.69,51.39,17],['SG','Singapore',1.35,103.82,14],['BR','São Paulo',-23.55,-46.63,11],
+  ['US','Ashburn',39.04,-77.49,9],['VN','Hanoi',21.03,105.85,8],['KP','Pyongyang',39.03,125.75,6],['TR','Istanbul',41.01,28.98,5]
+];
+ORIGIN_SEED.forEach(o=>{ state.origins[o[0]] = {cc:o[0], city:o[1], lat:o[2], lon:o[3], count:o[4], blocked: ri(80,99)}; });
+
+/* ---------------- AUDIT ---------------- */
+function audit(actor, cls, txt){
+  state.auditSeq++;
+  state.audit.unshift({id:'AUD-'+String(state.auditSeq).padStart(5,'0'), actor:actor, cls:cls, txt:txt, ts:now()});
+  if(state.audit.length>120) state.audit.pop();
+  renderAudit();
+}
+
+/* ============================================================
+   RENDER: KPI
+   ============================================================ */
+function renderKpis(){
+  const active = state.alerts.filter(a=>a.status!=='closed').length;
+  const crit = state.alerts.filter(a=>a.sev==='critical' && a.status!=='closed').length;
+  $('#kpiAlerts').textContent = active;
+  $('#kpiCrit').textContent = crit;
+  $('#kpiAlertsSub').textContent = state.alerts.filter(a=>a.status==='new').length + ' new · ' + state.alerts.filter(a=>a.status==='triage').length + ' in triage';
+  const critEl = $('#kpiCrit');
+  critEl.className = crit>0 ? 'kpi-val crit' : 'kpi-val';
+  $('#kpiCritSub').textContent = crit>0 ? 'escalated to IR bridge · P1 active' : 'no P1 incidents open';
+
+  const mttd = 3.6 + rand(-0.4,0.9);
+  const mttr = 11.4 + rand(-1.2,2.4);
+  $('#kpiMttd').textContent = mttd.toFixed(1);
+  $('#kpiMttr').textContent = mttr.toFixed(1);
+  $('#kpiMttdBar').style.width = clamp(100 - mttd*8, 30, 95)+'%';
+  $('#kpiMttrBar').style.width = clamp(100 - mttr*3.4, 30, 95)+'%';
+
+  state.spark.push(active);
+  if(state.spark.length>48) state.spark.shift();
+  drawSpark();
+}
+function drawSpark(){
+  const cv = $('#sparkAlerts'); if(!cv) return;
+  const ctx = cv.getContext('2d');
+  const w = cv.width, h = cv.height;
+  ctx.clearRect(0,0,w,h);
+  const d = state.spark; if(d.length<2) return;
+  const mn = Math.min.apply(null,d)-2, mx = Math.max.apply(null,d)+2;
+  const X = i => (i/(d.length-1))*w;
+  const Y = v => h - ((v-mn)/(mx-mn||1))*(h-4) - 2;
+  const grd = ctx.createLinearGradient(0,0,0,h);
+  grd.addColorStop(0,'rgba(255,59,87,.32)'); grd.addColorStop(1,'rgba(255,59,87,0)');
+  ctx.beginPath(); ctx.moveTo(X(0),h);
+  d.forEach((v,i)=>ctx.lineTo(X(i),Y(v)));
+  ctx.lineTo(X(d.length-1),h); ctx.closePath(); ctx.fillStyle=grd; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(X(0),Y(d[0]));
+  d.forEach((v,i)=>ctx.lineTo(X(i),Y(v)));
+  ctx.strokeStyle='#ff3b57'; ctx.lineWidth=1.4; ctx.shadowColor='#ff3b57'; ctx.shadowBlur=6; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.arc(X(d.length-1),Y(d[d.length-1]),2.2,0,7); ctx.fillStyle='#ff3b57'; ctx.fill();
+}
+
+/* ============================================================
+   RENDER: THREAT POSTURE
+   ============================================================ */
+const LEVELS = [
+  {n:1,name:'LOW',cls:'l1',col:'#34d399',desc:'Baseline noise only. No active adversary behaviour observed across monitored segments.'},
+  {n:2,name:'GUARDED',cls:'l2',col:'#38bdf8',desc:'Elevated opportunistic scanning detected. No successful exploitation or lateral movement.'},
+  {n:3,name:'ELEVATED',cls:'l3',col:'#fbbf24',desc:'Targeted activity in progress. Credential and endpoint telemetry converging on multiple incidents.'},
+  {n:4,name:'HIGH',cls:'l4',col:'#ff9f2e',desc:'Active adversary behaviour confirmed. Multiple correlated incidents; containment decisions pending analyst approval.'},
+  {n:5,name:'SEVERE',cls:'l5',col:'#ff3b57',desc:'Confirmed compromise with active impact. IR bridge engaged; executive notification triggered.'}
+];
+function renderThreat(){
+  const lv = LEVELS[state.threatLevel-1];
+  $('#threatScale').innerHTML = LEVELS.slice().reverse().map(l=>{
+    const act = l.n===state.threatLevel ? ' act '+l.cls : '';
+    const pct = act ? '100%' : '0%';
+    return '<div class="ts-row'+act+'"><span class="ts-step">L'+l.n+'</span><span style="width:66px">'+l.name+'</span>'+
+      '<span class="ts-bar"><i style="width:'+pct+';background:'+l.col+';box-shadow:0 0 8px '+l.col+'"></i></span></div>';
+  }).join('');
+  const score = Math.round(state.posture);
+  $('#postureVal').textContent = score;
+  const circ = 276.5;
+  $('#postureArc').setAttribute('stroke-dashoffset', String(circ - (score/100)*circ));
+  const col = score>=80?'#34d399':score>=65?'#38bdf8':score>=50?'#fbbf24':score>=35?'#ff9f2e':'#ff3b57';
+  $('#postureArc').setAttribute('stroke', col);
+  $('#postureVal').style.color = col;
+  const label = score>=80?'HARDENED':score>=65?'STABLE':score>=50?'ELEVATED':score>=35?'DEGRADED':'CRITICAL';
+  $('#postureLabel').textContent = label;
+  $('#postureLabel').style.color = col;
+  $('#postureDesc').textContent = lv.desc;
+}
+function driftMetrics(){
+  const m = {mDetect:[84,90],mPatch:[88,95],mMfa:[74,83],mEdr:[94,99]};
+  Object.keys(m).forEach(k=>{
+    const cur = parseFloat($('#'+k).textContent);
+    const v = clamp(cur + rand(-0.8,0.8), m[k][0], m[k][1]);
+    $('#'+k).textContent = v.toFixed(0)+'%';
+    $('#'+k+'Bar').style.width = v+'%';
+  });
+}
+
+/* ============================================================
+   RENDER: ORIGINS + GLOBE
+   ============================================================ */
+function renderOrigins(){
+  const rows = Object.keys(state.origins).map(k=>state.origins[k]).sort((a,b)=>b.count-a.count).slice(0,6);
+  $('#origins').innerHTML = rows.map(o=>{
+    const blk = o.blocked >= 90;
+    return '<div class="origin-row"><span class="cc"><span class="region-dot"></span><b>'+o.cc+'</b><em>'+esc(o.city)+'</em></span>'+
+      '<span class="ct">'+o.count+'</span>'+
+      '<span style="color:var(--dim);font-size:9.4px">'+o.blocked+'% blk</span>'+
+      '<span class="bl '+(blk?'blocked':'pass')+'">'+(blk?'BLOCKED':'LEAKING')+'</span></div>';
+  }).join('');
+  const total = state.alerts.length;
+  const blocked = Math.round(total*7.4);
+  $('#blockedBadge').textContent = 'BLOCKED ' + blocked;
+}
+
+(function globe(){
+  const cv = $('#globeMap'); if(!cv) return;
+  const ctx = cv.getContext('2d');
+  let W=0,H=0,DPR=Math.min(window.devicePixelRatio||1,2);
+  function size(){
+    const r = cv.getBoundingClientRect();
+    W = Math.max(120, r.width); H = Math.max(120, r.height);
+    cv.width = W*DPR; cv.height = H*DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  size(); window.addEventListener('resize', size);
+
+  const HQ = {lat:40.71, lon:-74.01};
+  let rot = 0, last = performance.now();
+
+  function proj(lat, lon, r, cx, cy){
+    const p = (90-lat)*Math.PI/180, t = (lon+rot)*Math.PI/180;
+    const x = Math.sin(p)*Math.cos(t), y = Math.cos(p), z = Math.sin(p)*Math.sin(t);
+    return {x: cx + x*r, y: cy - y*r, z: z, u:x, v:y};
+  }
+  function spawnArc(){
+    const keys = Object.keys(state.origins);
+    const o = state.origins[pick(keys)];
+    state.arcs.push({o:o, t:0, sp: rand(.0055,.011), col: Math.random()<.72 ? '#ff3b57' : '#2dd4bf'});
+    if(state.arcs.length>10) state.arcs.shift();
+  }
+  spawnArc(); spawnArc(); spawnArc();
+  setInterval(spawnArc, 2100);
+
+  function frame(t){
+    const dt = Math.min(60, t-last); last = t;
+    rot = (rot + dt*0.0055) % 360;
+
+    ctx.clearRect(0,0,W,H);
+    const cx = W/2, cy = H/2, R = Math.min(W,H)*0.36;
+
+    // sphere body
+    const grd = ctx.createRadialGradient(cx-R*0.4, cy-R*0.45, R*0.1, cx, cy, R*1.25);
+    grd.addColorStop(0,'rgba(45,212,191,.13)');
+    grd.addColorStop(.55,'rgba(13,29,38,.55)');
+    grd.addColorStop(1,'rgba(4,8,12,.05)');
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.fillStyle=grd; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.strokeStyle='rgba(45,212,191,.34)'; ctx.lineWidth=1; ctx.stroke();
+
+    // latitude rings
+    ctx.strokeStyle='rgba(45,212,191,.16)'; ctx.lineWidth=.7;
+    for(let lat=-60; lat<=60; lat+=30){
+      ctx.beginPath(); let first=true;
+      for(let lon=-180; lon<=180; lon+=6){
+        const p = proj(lat,lon,R,cx,cy);
+        if(p.z < 0){ first=true; continue; }
+        if(first){ ctx.moveTo(p.x,p.y); first=false; } else ctx.lineTo(p.x,p.y);
+      }
+      ctx.stroke();
+    }
+    // longitude rings
+    for(let lon=-180; lon<180; lon+=30){
+      ctx.beginPath(); let first=true;
+      for(let lat=-90; lat<=90; lat+=6){
+        const p = proj(lat,lon,R,cx,cy);
+        if(p.z < 0){ first=true; continue; }
+        if(first){ ctx.moveTo(p.x,p.y); first=false; } else ctx.lineTo(p.x,p.y);
+      }
+      ctx.stroke();
+    }
+
+    // HQ marker
+    const hq = proj(HQ.lat, HQ.lon, R, cx, cy);
+    if(hq.z>0){
+      ctx.beginPath(); ctx.arc(hq.x,hq.y,3.4,0,7); ctx.fillStyle='#2dd4bf';
+      ctx.shadowColor='#2dd4bf'; ctx.shadowBlur=12; ctx.fill(); ctx.shadowBlur=0;
+      const pulse = (t/1000)%1.6;
+      ctx.beginPath(); ctx.arc(hq.x,hq.y,4+pulse*13,0,7);
+      ctx.strokeStyle='rgba(45,212,191,'+(0.45*(1-pulse/1.6))+')'; ctx.lineWidth=1.2; ctx.stroke();
+    }
+
+    // arcs
+    let live = 0;
+    for(let i=state.arcs.length-1;i>=0;i--){
+      const a = state.arcs[i];
+      a.t += a.sp * (dt/16.6);
+      const op = proj(a.o.lat, a.o.lon, R, cx, cy);
+      if(op.z <= 0.04){ if(a.t>1) state.arcs.splice(i,1); continue; }
+      live++;
+      const mx = (op.x+hq.x)/2, my = (op.y+hq.y)/2;
+      const dx = mx-cx, dy = my-cy, dl = Math.sqrt(dx*dx+dy*dy)||1;
+      const lift = 1 + (R*0.55)/dl;
+      const cxp = cx + dx*lift, cyp = cy + dy*lift;
+
+      ctx.beginPath(); ctx.moveTo(op.x,op.y);
+      ctx.quadraticCurveTo(cxp,cyp,hq.x,hq.y);
+      ctx.strokeStyle = a.col==='#ff3b57' ? 'rgba(255,59,87,.30)' : 'rgba(45,212,191,.30)';
+      ctx.lineWidth=1; ctx.stroke();
+
+      const tp = Math.min(1, a.t);
+      const u = 1-tp;
+      const px = u*u*op.x + 2*u*tp*cxp + tp*tp*hq.x;
+      const py = u*u*op.y + 2*u*tp*cyp + tp*tp*hq.y;
+      ctx.beginPath(); ctx.arc(px,py,1.9,0,7); ctx.fillStyle=a.col;
+      ctx.shadowColor=a.col; ctx.shadowBlur=10; ctx.fill(); ctx.shadowBlur=0;
+
+      ctx.beginPath(); ctx.arc(op.x,op.y,2.2,0,7); ctx.fillStyle = a.col==='#ff3b57'?'#ff3b57':'#2dd4bf'; ctx.fill();
+      if(a.t>0.55 && op.z>0.2){
+        ctx.font='9px ui-monospace,monospace';
+        ctx.fillStyle='rgba(199,213,224,.55)';
+        ctx.fillText(a.o.cc, op.x+6, op.y+3);
+      }
+      if(tp>1.02) state.arcs.splice(i,1);
+    }
+    $('#arcCount').textContent = live + ' live vectors';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ============================================================
+   RENDER: RULES
+   ============================================================ */
+function renderRules(){
+  const body = $('#rulesBody');
+  body.innerHTML = state.rules.map(r=>{
+    const cls = r.level==='critical'?'badge-critical':r.level==='high'?'badge-high':r.level==='medium'?'badge-medium':'badge-low';
+    return '<div class="rule'+(r.on?'':' off')+'" data-rule="'+r.id+'">'+
+      '<div class="rule-l">'+
+        '<div class="rule-name">'+esc(r.name)+'</div>'+
+        '<div class="rule-meta">'+
+          '<span class="sev-badge '+cls+'">'+r.level.toUpperCase()+'</span>'+
+          '<span class="chip mitre">'+r.tech+'</span>'+
+          '<span class="chip">'+esc(r.log)+'</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="hits"><b>'+r.hits+'</b><br>hits/24h</div>'+
+      '<label class="switch"><input type="checkbox" '+(r.on?'checked':'')+' data-tog="'+r.id+'"><span class="sw-track"></span></label>'+
+    '</div>';
+  }).join('');
+  const on = state.rules.filter(r=>r.on).length;
+  $('#rulesActive').textContent = on+'/'+state.rules.length+' enabled';
+  $('#rulesHits').textContent = state.rules.reduce((s,r)=>s+(r.on?r.hits:0),0)+' hits/24h';
+
+  $$('[data-tog]', body).forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const r = state.rules.find(x=>x.id===e.target.getAttribute('data-tog'));
+      r.on = e.target.checked;
+      audit('m.reyes','human','Detection rule <b>'+esc(r.id)+'</b> '+(r.on?'<b>ENABLED</b>':'<b>DISABLED</b>')+' — '+esc(r.name));
+      toast('Detection Rule','Rule '+r.id+' '+(r.on?'enabled':'disabled'), r.on?'ok':'warn');
+      renderRules();
+    });
+  });
+}
+
+/* ============================================================
+   RENDER: ALERT QUEUE
+   ============================================================ */
+function renderQueue(){
+  const body = $('#queueBody');
+  const list = state.alerts.slice().sort((a,b)=>{
+    const order = {critical:0,high:1,medium:2,low:3};
+    if(order[a.sev]!==order[b.sev]) return order[a.sev]-order[b.sev];
+    return b.ts-a.ts;
+  });
+  body.innerHTML = list.map(a=>{
+    const cls = a.sev==='critical'?'badge-critical':a.sev==='high'?'badge-high':a.sev==='medium'?'badge-medium':'badge-low';
+    const sel = state.selected && state.selected.id===a.id ? ' sel':'';
+    const isNew = a.status==='new' ? '<span class="chip new">NEW</span>' : '';
+    return '<div class="alert-row sv-'+a.sev+sel+'" data-alert="'+a.id+'">'+
+      '<div class="sev-bar"></div>'+
+      '<div class="alert-in">'+
+        '<div class="alert-top">'+
+          '<span class="sev-badge '+cls+'">'+a.sev.toUpperCase()+'</span>'+
+          '<span class="chip src">'+(SRC_LABEL[a.src]||a.src)+'</span>'+
+          isNew+
+          '<span style="margin-left:auto;font-size:9.2px;color:var(--dim)">'+ago(a.ts)+'</span>'+
+        '</div>'+
+        '<div class="alert-title">'+esc(a.title)+'</div>'+
+        '<div class="chips">'+a.mitre.map(m=>'<span class="chip mitre">'+m+'</span>').join('')+'</div>'+
+        '<div class="alert-foot"><span>'+esc(a.asset)+'</span><span class="conf">conf '+(a.conf*100).toFixed(0)+'%</span></div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  $('#queueCount').textContent = list.filter(a=>a.status!=='closed').length+' active';
+  $$('[data-alert]', body).forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const a = state.alerts.find(x=>x.id===el.getAttribute('data-alert'));
+      if(a) selectAlert(a);
+    });
+  });
+}
+
+/* ============================================================
+   RENDER: AI TRIAGE
+   ============================================================ */
+function selectAlert(a){
+  state.selected = a;
+  state.gen++;
+  renderQueue();
+  renderTriage(a);
+  renderTimeline(a);
+  const p = document.getElementById('panel-triage');
+  p.classList.add('flash'); setTimeout(()=>p.classList.remove('flash'), 700);
+}
+function renderTriage(a){
+  const gen = state.gen;
+  const body = $('#triageBody');
+  const cls = a.sev==='critical'?'badge-critical':a.sev==='high'?'badge-high':a.sev==='medium'?'badge-medium':'badge-low';
+  const steps = [
+    'Pulling correlated telemetry across endpoint, network and identity sources',
+    'Enriching indicators — threat-intel, GeoIP, asset criticality, historical prevalence',
+    'Mapping observed behaviour to MITRE ATT&CK techniques',
+    'Assigning severity and computing confidence from weighted evidence',
+    'Drafting containment options for analyst approval'
+  ];
+  body.innerHTML =
+    '<div class="tri-head">'+
+      '<div class="th-top"><span class="sev-badge '+cls+'">'+a.sev.toUpperCase()+'</span><span class="chip src">'+(SRC_LABEL[a.src]||a.src)+'</span>'+
+      '<span style="margin-left:auto;font-size:9.4px;color:var(--dim)">'+a.id+'</span></div>'+
+      '<h3>'+esc(a.title)+'</h3>'+
+      '<div style="margin-top:6px;font-size:10px;color:var(--mut)">'+esc(a.asset)+' · '+esc(a.host)+'</div>'+
+    '</div>'+
+    '<div class="sect-lbl">Agent Reasoning</div>'+
+    '<div class="think" id="think">'+steps.map((s,i)=>'<div class="step" data-step="'+i+'"><span class="st-ico">'+(i+1)+'</span><span>'+esc(s)+'</span></div>').join('')+'</div>'+
+    '<div class="sect-lbl">Enrichment</div>'+
+    '<div class="enrich" id="enrich"></div>'+
+    '<div class="sect-lbl">MITRE ATT&amp;CK Mapping</div>'+
+    '<div class="chips" id="attck"></div>'+
+    '<div class="conf-wrap"><div class="conf-top"><span>AI CONFIDENCE</span><b id="confVal">0%</b></div>'+
+      '<div class="conf-track"><div class="conf-fill" id="confFill"></div></div></div>'+
+    '<div class="sect-lbl">Recommended Next Steps</div>'+
+    '<div class="recs" id="recs"></div>'+
+    '<div class="gate"><span>⚠</span><span><b>HUMAN APPROVAL REQUIRED</b> — none of the above execute automatically. Review and approve each containment action in the SOAR panel.</span></div>';
+
+  // animate reasoning
+  const total = steps.length, stepMs = 320;
+  let i = 0;
+  const tick = setInterval(()=>{
+    if(gen !== state.gen){ clearInterval(tick); return; }
+    $$('#think .step').forEach((el,k)=>{
+      el.classList.remove('run');
+      if(k < i) el.classList.add('done');
+    });
+    if(i < total){
+      const cur = $('#think .step[data-step="'+i+'"]');
+      if(cur){ cur.classList.add('run'); cur.querySelector('.st-ico').textContent='◐'; }
+      i++;
+    } else {
+      clearInterval(tick);
+      const s = state.posture;
+      if(s >= 70){ state.posture = clamp(state.posture + rand(2,7), 20, 97); }
+    }
+  }, stepMs);
+
+  // enrichment (revealed progressively)
+  const ti = (a.ti || ['No direct intel matches — behaviour-based detection only',
+                       'First-seen observable, no historical prevalence',
+                       'Passive DNS shows recent registration']).slice(0,3);
+  const enrich =
+    '<div class="en-card"><div class="e-k">Threat Intel</div><div class="ti-list">'+ti.map(t=>'<span>'+esc(t)+'</span>').join('')+'</div></div>'+
+    '<div class="en-card"><div class="e-k">GeoIP / ASN</div><div class="e-v'+(a.sev==='critical'?' crit':'')+'">'+esc(a.geo||('INTERNAL · '+a.host))+'</div></div>'+
+    '<div class="en-card"><div class="e-k">Asset Criticality</div><div class="e-v hot">'+esc(a.crit||'MEDIUM — standard business asset')+'</div></div>'+
+    '<div class="en-card"><div class="e-k">Identity Context</div><div class="e-v">'+esc(a.user)+' · '+(a.user==='—'?'service context, no interactive session':'privileged access, MFA '+(Math.random()<.5?'enrolled':'not enrolled'))+'</div></div>'+
+    '<div class="en-card full"><div class="e-k">Assessed Severity · rationale</div><div class="e-v">'+esc(a.reason||'Behavioural deviation from baseline across multiple telemetry sources.')+'</div></div>';
+  let e = 0;
+  const eTick = setInterval(()=>{
+    if(gen !== state.gen){ clearInterval(eTick); return; }
+    e++;
+    const parts = enrich.split('</div><div class="en-card');
+    if(e >= 5){ $('#enrich').innerHTML = enrich; clearInterval(eTick); }
+  }, stepMs*1.4);
+
+  setTimeout(()=>{
+    if(gen !== state.gen) return;
+    $('#attck').innerHTML = (a.mitre||[]).map(m=>{
+      const names={'T1003.001':'OS Credential Dumping: LSASS Memory','T1055':'Process Injection','T1078.004':'Valid Accounts: Cloud','T1621':'Multi-Factor Auth Request Generation','T1110.003':'Brute Force: Password Spraying','T1071.001':'Application Layer Protocol: Web','T1573.002':'Encrypted Channel: Asymmetric','T1486':'Data Encrypted for Impact','T1490':'Inhibit System Recovery','T1083':'File and Directory Discovery','T1098.003':'Account Manipulation: Additional Cloud Roles','T1048.003':'Exfiltration Over Alternative Protocol','T1071.004':'Application Layer Protocol: DNS','T1203':'Exploitation for Client Execution','T1189':'Drive-by Compromise','T1558.003':'Steal or Forge Kerberos Tickets','T1087.002':'Account Discovery: Domain Account','T1543.003':'Create or Modify System Process','T1059.001':'Command and Scripting Interpreter','T1021.002':'Remote Services: SMB','T1552.001':'Unsecured Credentials','T1204.002':'User Execution: Malicious File','T1014':'Rootkit','T1046':'Network Service Discovery','T1566.001':'Phishing: Attachment','T1547.001':'Registry Run Keys','T1053.005':'Scheduled Task/Job','T1562.001':'Impair Defenses','T1098.003':'Account Manipulation'};
+      return '<span class="chip mitre" title="'+esc(names[m]||'')+'">'+m+'</span>';
+    }).join('') || '<span style="color:var(--dim);font-size:10px">No ATT&CK mapping assigned</span>';
+  }, stepMs*total+120);
+
+  setTimeout(()=>{
+    if(gen !== state.gen) return;
+    const pct = Math.round((a.conf||0.7)*100);
+    $('#confFill').style.width = pct+'%';
+    let c = 0;
+    const cTick = setInterval(()=>{
+      if(gen !== state.gen){ clearInterval(cTick); return; }
+      c += Math.max(1, Math.round(pct/22));
+      if(c >= pct){ c = pct; clearInterval(cTick); }
+      $('#confVal').textContent = c+'%';
+    }, 32);
+  }, stepMs*total+220);
+
+  const recs = buildRecs(a);
+  setTimeout(()=>{
+    if(gen !== state.gen) return;
+    $('#recs').innerHTML = recs.map((r,i)=>'<div class="rec"><span class="r-n">'+(i+1)+'.</span><span class="r-t">'+esc(r)+'</span>'+
+      '<button data-queue="'+i+'">QUEUE REVIEW</button></div>').join('');
+    $$('[data-queue]', $('#recs')).forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const idx = parseInt(b.getAttribute('data-queue'),10);
+        const pb = state.soar.find(s=>s.name.toLowerCase().indexOf(recs[idx].split(' ')[0].toLowerCase())===0) || state.soar[0];
+        audit('ARIA-CHIEF','ai','Recommendation queued for analyst review: <b>'+esc(recs[idx])+'</b> (case '+a.id+')');
+        toast('Queued for Review','"'+recs[idx]+'" added to the review queue. No action taken — read-only.', 'warn');
+        pb.proposed = true;
+        renderSoar();
+      });
+    });
+  }, stepMs*total+320);
+}
+function buildRecs(a){
+  const map = {
+    endpoint:['Isolate host '+a.host+' from the network','Kill process tree and capture volatile memory first','Block egress to '+a.ip+' at the perimeter','Reset credentials for '+a.user+' and force re-authentication'],
+    network:['Block '+a.ip+' at the edge firewall and sinkhole the domain','Capture a 10-minute packet transcript around the beacon window','Hunt for the same JA3 fingerprint across all egress logs','Add the destination to the network blocklist'],
+    cloud:['Detach the wildcard policy from '+a.user+' immediately','Enumerate all actions taken by the role in the last 24h','Rotate the keys associated with '+a.user+'','Open a change-management exception review'],
+    identity:['Disable '+a.user+' and revoke all active sessions','Force MFA re-enrolment with a hardware factor','Reset the password and invalidate refresh tokens','Review sign-in logs for the same /24 across all tenants'],
+    email:['Quarantine the message cluster tenant-wide','Block the sender domain and rewrite the URL','Hunt for other recipients who opened the attachment','Brief the affected user cohort']
+  };
+  return map[a.src] || ['Correlate with adjacent telemetry','Escalate to a tier-3 analyst','Open an investigation case'];
+}
+
+/* ============================================================
+   RENDER: TIMELINE
+   ============================================================ */
+function buildTimeline(a){
+  const t0 = a.ts;
+  const base = [
+    [0,'network','Inbound session observed from '+ (a.geo||'external ASN').split('·').pop().trim()],
+    [45,'endpoint','Process creation on <code>'+a.host+'</code>' + (a.user!=='—'?' under <code>'+a.user+'</code>':'')],
+    [90,'identity','Authentication event correlated to same host'],
+    [150,'network','Outbound TLS session to destination with mismatch fingerprint'],
+    [210,'endpoint','Persistence artefact written to disk'],
+    [300,'cloud','Privilege or policy change recorded in control plane']
+  ];
+  const srcMap = {endpoint:'SENSOR · EDR', network:'SENSOR · ZEEK', identity:'SENSOR · IDENTITY', cloud:'SENSOR · CLOUDTRAIL', email:'SENSOR · MAIL-GW'};
+  return base.map((b,i)=>({
+    t: t0 + b[0]*1000,
+    src: srcMap[b[1]] || 'SENSOR',
+    txt: b[2],
+    cls: i===0 ? a.sev : (i===3 ? 'high' : '')
+  }));
+}
+function renderTimeline(a){
+  const ev = buildTimeline(a);
+  $('#tlCase').textContent = 'CASE ' + a.id;
+  const tl = '<div class="tl">'+ev.map(e=>
+      '<div class="tl-item '+(e.cls||'')+'"><div class="tl-time">'+tstamp(e.t)+'</div>'+
+      '<div class="tl-src">'+esc(e.src)+'</div><div class="tl-txt">'+e.txt+'</div></div>').join('')+
+    '</div>';
+  const logs = [
+    tstamp(ev[1].t)+'  '+a.host+'  sysmon   EID=1  Image=rundll32.exe  Parent=powershell.exe -enc  PID=8112',
+    tstamp(ev[2].t)+'  IDP       aad      SignIn  user='+a.user+'  result=Success  risk=high  geo='+(a.geo||'internal'),
+    tstamp(ev[3].t)+'  EDGE-FW   zeek     conn    proto=tls  dst='+a.ip+'  ja3=96b2fa  interval=60.2s',
+    tstamp(ev[4].t)+'  '+a.host+'  sysmon   EID=13  TargetObject=HKLM\\...\\Run  Image=rundll32.exe',
+    tstamp(ev[5].t)+'  CLOUD     trail    AttachRolePolicy  role='+a.user+'  policy=AdministratorAccess'
+  ].join('\n');
+  const queries = [
+    'process.name:* AND winlog.event_id:10 AND target.image:*lsass*',
+    'src_ip:'+a.ip+' AND network.protocol:tls | stats count by ja3',
+    'user.name:"'+a.user+'" | where geo.country != baseline.country',
+    'event.category:process AND process.parent.name:powershell.exe',
+    'rule.technique:"'+((a.mitre&&a.mitre[0])||'T1071')+'" | tail 500'
+  ];
+  $('#timelineBody').innerHTML =
+    '<div class="sect-lbl">Correlated Events · '+ev.length+'</div>' + tl +
+    '<div class="sect-lbl">Related Raw Telemetry</div>'+
+    '<div class="logs">'+esc(logs).replace(/EID=/g,'<span class="k">EID=</span>').replace(/risk=high/g,'<span class="r">risk=high</span>').replace(/AttachRolePolicy/g,'<span class="w">AttachRolePolicy</span>')+'</div>'+
+    '<div class="sect-lbl">Suggested Next Queries</div>'+
+    '<div>'+queries.map(q=>'<span class="qchip" data-q="'+esc(q)+'">'+esc(q)+'</span>').join('')+'</div>';
+  $$('[data-q]', $('#timelineBody')).forEach(c=>{
+    c.addEventListener('click', ()=>{
+      audit('m.reyes','human','Read-only query executed: <b>'+esc(c.getAttribute('data-q'))+'</b>');
+      toast('Query Queued (read-only)','"' + c.getAttribute('data-q') + '" dispatched to the search backend. No state change.', '');
+    });
+  });
+}
+
+/* ============================================================
+   RENDER: SOAR
+   ============================================================ */
+function renderSoar(){
+  const body = $('#soarBody');
+  body.innerHTML = state.soar.map(s=>{
+    const done = s.executed, prop = s.proposed && !s.executed;
+    return '<div class="soar-card'+(done?' executed':(prop?' proposed':''))+'" data-soar="'+s.id+'">'+
+      '<div class="soar-top">'+
+        '<span class="soar-name">'+esc(s.name)+'</span>'+
+        (done ? '<span class="sev-badge" style="color:var(--ok);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35)">EXECUTED</span>'
+              : (prop ? '<span class="sev-badge badge-medium">AI PROPOSED</span>' : '<span class="sev-badge badge-low">IDLE</span>'))+
+      '</div>'+
+      '<div class="soar-impact"><b>Target:</b> '+esc(s.target)+'</div>'+
+      '<div class="soar-impact"><span class="rb">'+esc(s.impact)+'</span></div>'+
+      (done ? '<div class="soar-impact" style="margin-top:7px;color:var(--ok)">Completed '+esc(s.when||'')+' · reversible · audit '+esc(s.aud||'')+'</div>'
+            : '<div class="soar-foot">'+
+                '<button class="btn '+(prop?'warn':'ghost')+'" data-propose="'+s.id+'">'+(prop?'RE-PROPOSE':'AI PROPOSE')+'</button>'+
+                '<button class="btn danger" data-exec="'+s.id+'" '+(prop?'':'disabled')+'>REQUEST APPROVAL</button>'+
+              '</div>')+
+    '</div>';
+  }).join('');
+  $('#execCount').textContent = state.executed + ' executed';
+
+  $$('[data-propose]', body).forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const s = state.soar.find(x=>x.id===b.getAttribute('data-propose'));
+      s.proposed = true;
+      audit('ARIA-CHIEF','ai','Recommended containment action <b>'+esc(s.name)+'</b> against '+esc(s.target)+' — awaiting human approval');
+      toast('AI Recommendation','"'+s.name+'" proposed. No execution without analyst approval.','');
+      renderSoar();
+    });
+  });
+  $$('[data-exec]', body).forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const s = state.soar.find(x=>x.id===b.getAttribute('data-exec'));
+      openApproval(s);
+    });
+  });
+}
+
+/* ============================================================
+   APPROVAL MODAL
+   ============================================================ */
+function openApproval(s){
+  state.pendingAction = s;
+  $('#modalAction').innerHTML =
+    '<div class="aa-name">'+esc(s.name)+'</div>'+
+    '<div class="aa-row"><span>Target</span><span>'+esc(s.target)+'</span></div>'+
+    '<div class="aa-row"><span>Requested by</span><span>ARIA-CHIEF (AI orchestrator)</span></div>'+
+    '<div class="aa-row"><span>Blast radius</span><span>'+esc(s.impact)+'</span></div>'+
+    '<div class="aa-row"><span>Reversible</span><span>Yes — time-boxed to 4h</span></div>'+
+    '<div class="aa-row"><span>Policy check</span><span style="color:var(--ok)">PASSED · within blast-radius caps</span></div>';
+  $('#justification').value = '';
+  $('#approveBtn').disabled = true;
+  $('#overlay').classList.add('on');
+  setTimeout(()=>$('#justification').focus(), 80);
+}
+function closeApproval(){ $('#overlay').classList.remove('on'); state.pendingAction = null; }
+
+$('#justification').addEventListener('input', e=>{
+  $('#approveBtn').disabled = e.target.value.trim().length < 8;
+});
+$('#approveBtn').addEventListener('click', ()=>{
+  const s = state.pendingAction; if(!s) return;
+  const just = $('#justification').value.trim();
+  state.executed++;
+  s.executed = true; s.proposed = false;
+  s.when = tstamp(now());
+  state.auditSeq++;
+  s.aud = 'AUD-'+String(state.auditSeq).padStart(5,'0');
+  audit('ARIA-CHIEF','ai','Executing approved action <b>'+esc(s.name)+'</b> against '+esc(s.target));
+  audit('m.reyes','human','<b>APPROVED</b> '+esc(s.name)+' — justification: "'+esc(just)+'" · audit '+s.aud);
+  audit('SYSTEM','ok','Action <b>'+esc(s.name)+'</b> completed on '+esc(s.target)+' · rollback handle attached · 4h TTL');
+  toast('Action Executed','"'+s.name+'" completed. Logged as '+s.aud+'.','ok');
+  closeApproval();
+  renderSoar();
+  // containment reduces threat posture
+  state.posture = clamp(state.posture + rand(3,8), 20, 97);
+  renderThreat();
+});
+$('#denyBtn').addEventListener('click', ()=>{
+  const s = state.pendingAction;
+  if(s){
+    audit('m.reyes','deny','<b>DENIED</b> '+esc(s.name)+' on '+esc(s.target)+' — no action taken');
+    toast('Action Denied','"'+s.name+'" was denied. Nothing changed.','crit');
+  }
+  closeApproval();
+});
+$('#overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeApproval(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeApproval(); });
+
+/* ============================================================
+   RENDER: AUDIT
+   ============================================================ */
+function renderAudit(){
+  $('#auditBody').innerHTML = state.audit.slice(0,60).map(a=>
+    '<div class="audit-row a-'+a.cls+'">'+
+      '<span class="audit-id">'+esc(a.id)+'</span>'+
+      '<span class="audit-actor">'+esc(a.actor)+'</span>'+
+      '<span class="audit-txt">'+a.txt+'</span>'+
+      '<span class="audit-time">'+tstamp(a.ts)+'</span>'+
+    '</div>').join('');
+}
+
+/* ============================================================
+   LIVE SIMULATION
+   ============================================================ */
+function injectAlert(){
+  const t = pick(INJECT);
+  const n = ri(1000,9999);
+  const a = mk({
+    sev: t.sev, src: t.src, title: t.title, mitre: t.mitre.slice(),
+    conf: rand(0.58,0.95), ts: now(),
+    asset: t.asset + (t.asset.indexOf('·')>-1 ? n : 'WKS-'+n),
+    host: t.host + (t.host==='WKS-'||t.host==='SEG-' ? n : ''),
+    ip: '198.51.'+ri(1,254)+'.'+ri(1,254),
+    user: t.user==='—' ? '—' : (t.user==='SYSTEM'?'SYSTEM':t.user)
+  });
+  if(a.host==='WKS-') a.host='WKS-'+n;
+  if(a.asset.indexOf('WKS-')>-1 && a.asset.indexOf('·')===-1) a.asset='WKS-'+n+' · FLEET';
+  state.alerts.unshift(a);
+  if(state.alerts.length>26){
+    // retire the oldest closed/low alert
+    for(let i=state.alerts.length-1;i>0;i--){
+      if(state.alerts[i].status==='closed'){ state.alerts.splice(i,1); break; }
+    }
+    if(state.alerts.length>26) state.alerts.pop();
+  }
+  renderQueue(); renderKpis(); renderOrigins();
+  if(a.sev==='critical'){
+    state.threatLevel = 4;
+    renderThreat();
+    audit('ARIA-CHIEF','ai','New <b>CRITICAL</b> alert <b>'+a.id+'</b> triaged automatically — '+esc(a.title));
+    toast('CRITICAL ALERT','['+a.id+'] '+a.title+' — triaged, awaiting analyst review.','crit');
+  } else {
+    audit('ARIA-CHIEF','ai','Alert <b>'+a.id+'</b> ingested from '+SRC_LABEL[a.src]+' sensor and auto-enriched');
+  }
+}
+
+function tickRules(){
+  state.rules.forEach(r=>{
+    if(r.on && Math.random()<0.13) r.hits++;
+  });
+  const body = $('#rulesBody');
+  if(body){
+    state.rules.forEach(r=>{
+      const el = body.querySelector('[data-rule="'+r.id+'"] .hits b');
+      if(el) el.textContent = r.hits;
+    });
+    $('#rulesHits').textContent = state.rules.reduce((s,r)=>s+(r.on?r.hits:0),0)+' hits/24h';
+  }
+}
+
+function tickOrigins(){
+  const keys = Object.keys(state.origins);
+  for(let i=0;i<ri(1,3);i++){
+    const o = state.origins[pick(keys)];
+    o.count += ri(1,3);
+    o.blocked = clamp(o.blocked + ri(-1,1), 62, 99);
+  }
+  renderOrigins();
+}
+
+function tickKpis(){
+  renderKpis();
+  // gradual posture drift
+  state.posture = clamp(state.posture + rand(-1.6,1.4), 22, 96);
+  renderThreat();
+  const rate = (1.1 + Math.random()*0.9);
+  $('#ingestRate').textContent = rate.toFixed(2)+'k/s';
+  $('#sensorHealth').textContent = (308+ri(0,10)) + '/318';
+}
+
+function clock(){
+  const d = new Date();
+  $('#clock').textContent = pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds())+'Z';
+}
+
+/* tabs */
+$$('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    $$('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const el = document.getElementById(t.getAttribute('data-jump'));
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function boot(){
+  audit('SYSTEM','sys','Sentinel SOC console session initialised · analyst <b>m.reyes</b> (TIER-2) · RBAC role <b>analyst</b>');
+  audit('SYSTEM','sys','Guardrails active — read-only posture, blast-radius caps enforced, append-only audit enabled');
+  audit('ARIA-CHIEF','ai','Correlated '+state.alerts.length+' open alerts from 6 telemetry sources');
+  renderKpis(); renderThreat(); renderOrigins(); renderRules(); renderQueue(); renderSoar(); clock();
+
+  const first = state.alerts.filter(a=>a.sev==='critical')[0] || state.alerts[0];
+  if(first) selectAlert(first);
+
+  setTimeout(()=>toast('Sentinel Online','8 detection streams healthy · 312/318 sensors reporting · read-only mode active.','ok'), 500);
+  setTimeout(()=>injectAlert(), 6500);
+  setTimeout(()=>toast('AI Orchestrator','ARIA-CHIEF auto-triaged 3 new alerts. 0 executed — all awaiting human approval.',''), 11000);
+
+  setInterval(clock, 1000);
+  setInterval(tickKpis, 2600);
+  setInterval(tickRules, 3200);
+  setInterval(tickOrigins, 4200);
+  setInterval(driftMetrics, 5200);
+  setInterval(()=>{ if(Math.random()<0.62) injectAlert(); }, 9000);
+  setInterval(()=>{
+    if(Math.random()<0.4){
+      audit('ARIA-CHIEF','ai','Continuous hunt sweep complete — 0 new high-confidence anomalies in the last cycle');
+    }
+  }, 15000);
+  setTimeout(()=>{
+    state.threatLevel = 3; renderThreat();
+  }, 30000);
+  setTimeout(()=>{
+    if(state.threatLevel < 4){ state.threatLevel = 4; renderThreat(); }
+  }, 46000);
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+})();
+</script>
+</body>
+</html>
